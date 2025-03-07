@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
+import dev.ai4j.openai4j.jackson.CustomIntegerDeserializer;
 import dev.ai4j.openai4j.shared.Usage;
 
 import java.util.List;
@@ -22,6 +23,7 @@ public final class ChatCompletionResponse {
     @JsonProperty
     private final String id;
     @JsonProperty
+    @JsonDeserialize(using = CustomIntegerDeserializer.class)
     private final Integer created;
     @JsonProperty
     private final String model;
@@ -77,6 +79,17 @@ public final class ChatCompletionResponse {
      */
     public String content() {
         return choices().get(0).message().content();
+    }
+    public String deltaContent() {
+        return choices().get(0).delta().content();
+    }
+
+    public String reasoningContent() {
+        return choices().get(0).message().reasoningContent();
+    }
+
+    public String deltaReasoningContent() {
+        return choices().get(0).delta().reasoningContent();
     }
 
     @Override

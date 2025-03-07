@@ -75,6 +75,18 @@ class RequestExecutor<Request, Response, ResponseContent>
                 responseClass,
                 streamEventContentExtractor,
                 logStreamingResponses
-        ).onPartialResponse(partialResponseHandler);
+        ).onPartialResponse(partialResponseHandler, null);
+    }
+
+    @Override
+    public StreamingResponseHandling onPartialResponse(Consumer<ResponseContent> partialResponseHandler, Consumer<ResponseContent> partialReasoningResponseHandler) {
+        return new StreamingRequestExecutor<>(
+                okHttpClient,
+                endpointUrl,
+                requestWithStreamSupplier,
+                responseClass,
+                streamEventContentExtractor,
+                logStreamingResponses
+        ).onPartialResponse(partialResponseHandler, partialReasoningResponseHandler);
     }
 }

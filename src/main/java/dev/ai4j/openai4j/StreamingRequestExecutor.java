@@ -1,11 +1,13 @@
 package dev.ai4j.openai4j;
 
+import dev.ai4j.openai4j.chat.ChatCompletionResponse;
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
 import okhttp3.RequestBody;
 import okhttp3.sse.EventSource;
 import okhttp3.sse.EventSourceListener;
 import okhttp3.sse.EventSources;
+import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -44,7 +46,10 @@ class StreamingRequestExecutor<Request, Response, ResponseContent> {
         this.logStreamingResponses = logStreamingResponses;
     }
 
-    StreamingResponseHandling onPartialResponse(Consumer<ResponseContent> partialResponseHandler) {
+    StreamingResponseHandling onPartialResponse(
+            Consumer<ResponseContent> partialResponseHandler,
+            @Nullable Consumer<ResponseContent> partialReasoningResponseHandler
+    ) {
 
         return new StreamingResponseHandling() {
 
@@ -60,6 +65,7 @@ class StreamingRequestExecutor<Request, Response, ResponseContent> {
                             public ResponseHandle execute() {
                                 return stream(
                                         partialResponseHandler,
+                                        partialReasoningResponseHandler,
                                         streamingCompletionCallback,
                                         errorHandler
                                 );
@@ -75,6 +81,7 @@ class StreamingRequestExecutor<Request, Response, ResponseContent> {
                             public ResponseHandle execute() {
                                 return stream(
                                         partialResponseHandler,
+                                        partialReasoningResponseHandler,
                                         streamingCompletionCallback,
                                         (e) -> {
                                             // intentionally ignoring because user called ignoreErrors()
@@ -94,6 +101,7 @@ class StreamingRequestExecutor<Request, Response, ResponseContent> {
                     public ResponseHandle execute() {
                         return stream(
                                 partialResponseHandler,
+                                partialReasoningResponseHandler,
                                 () -> {
                                     // intentionally ignoring because user did not provide callback
                                 },
@@ -111,6 +119,7 @@ class StreamingRequestExecutor<Request, Response, ResponseContent> {
                     public ResponseHandle execute() {
                         return stream(
                                 partialResponseHandler,
+                                partialReasoningResponseHandler,
                                 () -> {
                                     // intentionally ignoring because user did not provide callback
                                 },
@@ -126,6 +135,7 @@ class StreamingRequestExecutor<Request, Response, ResponseContent> {
 
     private ResponseHandle stream(
             Consumer<ResponseContent> partialResponseHandler,
+            @Nullable Consumer<ResponseContent> partialReasoningResponseHandler,
             Runnable streamingCompletionCallback,
             Consumer<Throwable> errorHandler
     ) {
@@ -174,6 +184,10 @@ class StreamingRequestExecutor<Request, Response, ResponseContent> {
                     Response response = Json.fromJson(data, responseClass);
                     ResponseContent responseContent = streamEventContentExtractor.apply(response);
                     if (responseContent != null) {
+                        if (partialReasoningResponseHandler != null && hasReasoningContent(responseContent)) {
+                            partialReasoningResponseHandler.accept(responseContent);
+                            return;
+                        }
                         partialResponseHandler.accept(responseContent); // do not handle exception, fail-fast
                     }
                 } catch (Exception e) {
@@ -228,5 +242,9 @@ class StreamingRequestExecutor<Request, Response, ResponseContent> {
                 .newEventSource(okHttpRequest, eventSourceListener);
 
         return responseHandle;
+    }
+
+    private boolean hasReasoningContent(ResponseContent responseContent) {
+        return responseContent instanceof ChatCompletionResponse && ((ChatCompletionResponse) responseContent).deltaReasoningContent() != null;
     }
 }

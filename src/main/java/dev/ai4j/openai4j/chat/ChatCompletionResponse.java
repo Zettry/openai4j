@@ -12,6 +12,7 @@ import dev.ai4j.openai4j.shared.Usage;
 
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 
 import static java.util.Collections.unmodifiableList;
 
@@ -81,15 +82,29 @@ public final class ChatCompletionResponse {
         return choices().get(0).message().content();
     }
     public String deltaContent() {
-        return choices().get(0).delta().content();
+        List<ChatCompletionChoice> ch = choices();
+        if (ch.isEmpty()) {
+            return null;
+        }
+        return Optional.ofNullable(ch.get(0)).map(ChatCompletionChoice::delta).map(Delta::content).orElse(null);
     }
 
     public String reasoningContent() {
-        return choices().get(0).message().reasoningContent();
+        List<ChatCompletionChoice> ch = choices();
+        if (ch.isEmpty()) {
+            return null;
+        }
+        return Optional.ofNullable(ch.get(0)).map(ChatCompletionChoice::message).map(AssistantMessage::reasoningContent)
+                .orElse(null);
     }
 
     public String deltaReasoningContent() {
-        return choices().get(0).delta().reasoningContent();
+        List<ChatCompletionChoice> ch = choices();
+        if (ch.isEmpty()) {
+            return null;
+        }
+        return Optional.ofNullable(ch.get(0)).map(ChatCompletionChoice::delta).map(Delta::reasoningContent)
+                .orElse(null);
     }
 
     @Override
